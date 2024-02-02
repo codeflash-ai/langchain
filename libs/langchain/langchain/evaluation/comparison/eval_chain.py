@@ -63,37 +63,40 @@ def resolve_pairwise_criteria(
 
     """
     if criteria is None:
-        _default_criteria = [
-            Criteria.HELPFULNESS,
-            Criteria.RELEVANCE,
-            Criteria.CORRECTNESS,
-            Criteria.DEPTH,
-        ]
-        return {k.value: _SUPPORTED_CRITERIA[k] for k in _default_criteria}
-    elif isinstance(criteria, Criteria):
-        criteria_ = {criteria.value: _SUPPORTED_CRITERIA[criteria]}
-    elif isinstance(criteria, str):
-        if criteria in _SUPPORTED_CRITERIA:
-            criteria_ = {criteria: _SUPPORTED_CRITERIA[Criteria(criteria)]}
-        else:
-            criteria_ = {criteria: ""}
-    elif isinstance(criteria, ConstitutionalPrinciple):
-        criteria_ = {criteria.name: criteria.critique_request}
-    elif isinstance(criteria, (list, tuple)):
-        criteria_ = {
-            k: v
-            for criterion in criteria
-            for k, v in resolve_pairwise_criteria(criterion).items()
+        return {
+            Criteria.HELPFULNESS.value: _SUPPORTED_CRITERIA[Criteria.HELPFULNESS],
+            Criteria.RELEVANCE.value: _SUPPORTED_CRITERIA[Criteria.RELEVANCE],
+            Criteria.CORRECTNESS.value: _SUPPORTED_CRITERIA[Criteria.CORRECTNESS],
+            Criteria.DEPTH.value: _SUPPORTED_CRITERIA[Criteria.DEPTH],
         }
-    else:
-        if not criteria:
-            raise ValueError(
-                "Criteria cannot be empty. "
-                "Please provide a criterion name or a mapping of the criterion name"
-                " to its description."
-            )
-        criteria_ = dict(criteria)
-    return criteria_
+
+    # remove unnecessary `elif` with early return statements.
+    if isinstance(criteria, Criteria):
+        return {criteria.value: _SUPPORTED_CRITERIA[criteria]}
+
+    if isinstance(criteria, str):
+        return (
+            {criteria: _SUPPORTED_CRITERIA[Criteria(criteria)]}
+            if criteria in _SUPPORTED_CRITERIA
+            else {criteria: ""}
+        )
+
+    if isinstance(criteria, ConstitutionalPrinciple):
+        return {criteria.name: criteria.critique_request}
+
+    if isinstance(criteria, (list, tuple)):
+        criteria_ = {}
+        for criterion in criteria:
+            criteria_.update(resolve_pairwise_criteria(criterion))
+        return criteria_
+
+    if not criteria:  # no need to check `else` here again, just `if not criteria`
+        raise ValueError(
+            "Criteria cannot be empty. "
+            "Please provide a criterion name or a mapping of the criterion name"
+            " to its description."
+        )
+    return dict(criteria)
 
 
 class PairwiseStringResultOutputParser(BaseOutputParser[dict]):
