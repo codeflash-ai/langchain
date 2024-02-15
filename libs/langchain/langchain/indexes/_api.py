@@ -58,8 +58,8 @@ class _HashedDocument(Document):
     metadata_hash: str
     """The hash of the document metadata."""
 
-    @classmethod
-    def is_lc_serializable(cls) -> bool:
+    @staticmethod
+    def is_lc_serializable() -> bool:
         return False
 
     @root_validator(pre=True)
