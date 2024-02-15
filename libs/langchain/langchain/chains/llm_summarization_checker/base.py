@@ -65,6 +65,41 @@ def _load_sequential_chain(
     return chain
 
 
+def _load_sequential_chain(
+    llm: BaseLanguageModel,
+    create_assertions_prompt: PromptTemplate,
+    check_assertions_prompt: PromptTemplate,
+    revised_summary_prompt: PromptTemplate,
+    are_all_true_prompt: PromptTemplate,
+    verbose: bool = False,
+) -> SequentialChain:
+    prompts = [
+        create_assertions_prompt,
+        check_assertions_prompt,
+        revised_summary_prompt,
+        are_all_true_prompt,
+    ]
+    output_keys = ["assertions", "checked_assertions", "revised_summary", "all_true"]
+
+    chains = [
+        LLMChain(
+            llm=llm,
+            prompt=prompt,
+            output_key=output_key,
+            verbose=verbose,
+        )
+        for prompt, output_key in zip(prompts, output_keys)
+    ]
+
+    chain = SequentialChain(
+        chains,
+        input_variables=["summary"],
+        output_variables=["all_true", "revised_summary"],
+        verbose=verbose,
+    )
+    return chain
+
+
 class LLMSummarizationCheckerChain(Chain):
     """Chain for question-answering with self-verification.
 
@@ -103,20 +138,25 @@ class LLMSummarizationCheckerChain(Chain):
 
     @root_validator(pre=True)
     def raise_deprecation(cls, values: Dict) -> Dict:
-        if "llm" in values:
+        if "llm" in values and values["llm"] is not None:
             warnings.warn(
                 "Directly instantiating an LLMSummarizationCheckerChain with an llm is "
                 "deprecated. Please instantiate with"
                 " sequential_chain argument or using the from_llm class method."
             )
-            if "sequential_chain" not in values and values["llm"] is not None:
+            if "sequential_chain" not in values:
+                default_kwargs = {
+                    "create_assertions_prompt": CREATE_ASSERTIONS_PROMPT,
+                    "check_assertions_prompt": CHECK_ASSERTIONS_PROMPT,
+                    "revised_summary_prompt": REVISED_SUMMARY_PROMPT,
+                    "are_all_true_prompt": ARE_ALL_TRUE_PROMPT,
+                    "verbose": False,
+                }
+                kwargs = {
+                    k: values.get(k, default) for k, default in default_kwargs.items()
+                }
                 values["sequential_chain"] = _load_sequential_chain(
-                    values["llm"],
-                    values.get("create_assertions_prompt", CREATE_ASSERTIONS_PROMPT),
-                    values.get("check_assertions_prompt", CHECK_ASSERTIONS_PROMPT),
-                    values.get("revised_summary_prompt", REVISED_SUMMARY_PROMPT),
-                    values.get("are_all_true_prompt", ARE_ALL_TRUE_PROMPT),
-                    verbose=values.get("verbose", False),
+                    values["llm"], **kwargs
                 )
         return values
 
