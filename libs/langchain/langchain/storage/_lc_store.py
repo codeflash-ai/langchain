@@ -1,3 +1,5 @@
+import json
+
 """Create a key-value store for any langchain serializable object."""
 from typing import Callable, Optional
 
@@ -10,7 +12,7 @@ from langchain.storage.encoder_backed import EncoderBackedStore
 
 def _dump_as_bytes(obj: Serializable) -> bytes:
     """Return a bytes representation of a document."""
-    return dumps(obj).encode("utf-8")
+    return json.dumps(obj).encode("utf-8")
 
 
 def _dump_document_as_bytes(obj: Document) -> bytes:
