@@ -1,3 +1,5 @@
+import json
+
 """Create a key-value store for any langchain serializable object."""
 from typing import Callable, Optional
 
@@ -30,7 +32,7 @@ def _load_document_from_bytes(serialized: bytes) -> Document:
 
 def _load_from_bytes(serialized: bytes) -> Serializable:
     """Return a document from a bytes representation."""
-    return loads(serialized.decode("utf-8"))
+    return json.loads(serialized.decode("utf-8"))
 
 
 def _identity(x: str) -> str:
