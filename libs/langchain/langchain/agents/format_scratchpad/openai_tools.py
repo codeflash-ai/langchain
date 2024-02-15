@@ -45,15 +45,43 @@ def format_to_openai_tool_messages(
 
     Returns:
         list of messages to send to the LLM for the next prediction
-
     """
     messages = []
+    message_set = set()
     for agent_action, observation in intermediate_steps:
         if isinstance(agent_action, OpenAIToolAgentAction):
             new_messages = list(agent_action.message_log) + [
                 _create_tool_message(agent_action, observation)
             ]
-            messages.extend([new for new in new_messages if new not in messages])
+            for new_message in new_messages:
+                json_message = json.dumps(new_message.__dict__)
+                if json_message not in message_set:
+                    message_set.add(json_message)
+                    messages.append(new_message)
         else:
             messages.append(AIMessage(content=agent_action.log))
     return messages
+
+
+def _create_tool_message(
+    agent_action: OpenAIToolAgentAction, observation: str
+) -> ToolMessage:
+    """Convert agent action and observation into a function message.
+    Args:
+        agent_action: the tool invocation request from the agent
+        observation: the result of the tool invocation
+    Returns:
+        FunctionMessage that corresponds to the original tool invocation
+    """
+    if not isinstance(observation, str):
+        try:
+            content = json.dumps(observation, ensure_ascii=False)
+        except Exception:
+            content = str(observation)
+    else:
+        content = observation
+    return ToolMessage(
+        tool_call_id=agent_action.tool_call_id,
+        content=content,
+        additional_kwargs={"name": agent_action.tool},
+    )
