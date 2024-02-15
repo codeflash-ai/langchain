@@ -32,8 +32,7 @@ class LineListOutputParser(PydanticOutputParser):
         super().__init__(pydantic_object=LineList)
 
     def parse(self, text: str) -> LineList:
-        lines = text.strip().split("\n")
-        return LineList(lines=lines)
+        return LineList(lines=text.strip().split("\n"))
 
 
 # Default prompt
