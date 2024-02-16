@@ -188,8 +188,8 @@ class PairwiseStringEvalChain(PairwiseStringEvaluator, LLMEvalChain, LLMChain):
         default_factory=PairwiseStringResultOutputParser
     )
 
-    @classmethod
-    def is_lc_serializable(cls) -> bool:
+    @staticmethod
+    def is_lc_serializable() -> bool:
         return False
 
     class Config:
