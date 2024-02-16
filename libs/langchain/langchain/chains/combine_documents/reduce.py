@@ -42,9 +42,10 @@ def split_list_of_docs(
     """
     new_result_doc_list = []
     _sub_result_docs = []
+    _num_tokens = 0
     for doc in docs:
         _sub_result_docs.append(doc)
-        _num_tokens = length_func(_sub_result_docs, **kwargs)
+        _num_tokens += length_func([doc], **kwargs)
         if _num_tokens > token_max:
             if len(_sub_result_docs) == 1:
                 raise ValueError(
@@ -53,6 +54,7 @@ def split_list_of_docs(
                 )
             new_result_doc_list.append(_sub_result_docs[:-1])
             _sub_result_docs = _sub_result_docs[-1:]
+            _num_tokens = length_func(_sub_result_docs, **kwargs)
     new_result_doc_list.append(_sub_result_docs)
     return new_result_doc_list
 
