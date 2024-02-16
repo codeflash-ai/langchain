@@ -34,7 +34,7 @@ from langchain_core.tracers.evaluation import (
 )
 from langchain_core.tracers.langchain import LangChainTracer
 from langsmith.client import Client
-from langsmith.env import get_git_info, get_langchain_env_var_metadata
+from langsmith.env import get_git_info
 from langsmith.evaluation import EvaluationResult, RunEvaluator
 from langsmith.run_helpers import as_runnable, is_traceable_function
 from langsmith.schemas import Dataset, DataType, Example, TracerSession
@@ -451,22 +451,24 @@ def _determine_input_key(
     config: smith_eval.RunEvalConfig,
     run_inputs: Optional[List[str]],
 ) -> Optional[str]:
-    input_key = None
-    if config.input_key:
-        input_key = config.input_key
-        if run_inputs and input_key not in run_inputs:
+    input_key = config.input_key if config.input_key else None
+
+    if run_inputs:
+        if input_key and input_key not in run_inputs:
             logger.warning(
                 f"Input key {input_key} not in chain's specified"
                 f" input keys {run_inputs}. Evaluation behavior may be undefined."
             )
-    elif run_inputs and len(run_inputs) == 1:
-        input_key = run_inputs[0]
-    elif run_inputs is not None and len(run_inputs) > 1:
-        logger.warning(
-            f"Chain expects multiple input keys: {run_inputs},"
-            f" Evaluator is likely to fail. Evaluation behavior may be undefined."
-            " Specify an input_key in the RunEvalConfig to avoid this warning."
-        )
+        elif not input_key:
+            run_inputs_len = len(run_inputs)
+            if run_inputs_len == 1:
+                input_key = run_inputs[0]
+            else:
+                logger.warning(
+                    f"Chain expects multiple input keys: {run_inputs},"
+                    f" Evaluator is likely to fail. Evaluation behavior may be undefined."
+                    " Specify an input_key in the RunEvalConfig to avoid this warning."
+                )
 
     return input_key
 
@@ -1227,8 +1229,6 @@ async def arun_on_dataset(
     input_mapper = kwargs.pop("input_mapper", None)
     if input_mapper:
         warn_deprecated("0.0.305", message=_INPUT_MAPPER_DEP_WARNING, pending=True)
-    if revision_id is None:
-        revision_id = get_langchain_env_var_metadata().get("revision_id")
 
     if kwargs:
         warn_deprecated(
@@ -1283,8 +1283,6 @@ def run_on_dataset(
     input_mapper = kwargs.pop("input_mapper", None)
     if input_mapper:
         warn_deprecated("0.0.305", message=_INPUT_MAPPER_DEP_WARNING, pending=True)
-    if revision_id is None:
-        revision_id = get_langchain_env_var_metadata().get("revision_id")
 
     if kwargs:
         warn_deprecated(
