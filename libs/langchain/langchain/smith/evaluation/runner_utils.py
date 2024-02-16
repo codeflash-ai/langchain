@@ -34,7 +34,7 @@ from langchain_core.tracers.evaluation import (
 )
 from langchain_core.tracers.langchain import LangChainTracer
 from langsmith.client import Client
-from langsmith.env import get_git_info, get_langchain_env_var_metadata
+from langsmith.env import get_git_info
 from langsmith.evaluation import EvaluationResult, RunEvaluator
 from langsmith.run_helpers import as_runnable, is_traceable_function
 from langsmith.schemas import Dataset, DataType, Example, TracerSession
@@ -499,17 +499,17 @@ def _determine_reference_key(
     example_outputs: Optional[List[str]],
 ) -> Optional[str]:
     if config.reference_key:
-        reference_key = config.reference_key
-        if example_outputs and reference_key not in example_outputs:
+        if example_outputs and config.reference_key not in example_outputs:
             raise ValueError(
-                f"Reference key {reference_key} not in Dataset"
+                f"Reference key {config.reference_key} not in Dataset"
                 f" example outputs: {example_outputs}"
             )
-    elif example_outputs and len(example_outputs) == 1:
-        reference_key = list(example_outputs)[0]
-    else:
-        reference_key = None
-    return reference_key
+        return config.reference_key
+
+    if example_outputs and len(example_outputs) == 1:
+        return example_outputs[0]
+
+    return None
 
 
 def _construct_run_evaluator(
@@ -1227,8 +1227,6 @@ async def arun_on_dataset(
     input_mapper = kwargs.pop("input_mapper", None)
     if input_mapper:
         warn_deprecated("0.0.305", message=_INPUT_MAPPER_DEP_WARNING, pending=True)
-    if revision_id is None:
-        revision_id = get_langchain_env_var_metadata().get("revision_id")
 
     if kwargs:
         warn_deprecated(
@@ -1283,8 +1281,6 @@ def run_on_dataset(
     input_mapper = kwargs.pop("input_mapper", None)
     if input_mapper:
         warn_deprecated("0.0.305", message=_INPUT_MAPPER_DEP_WARNING, pending=True)
-    if revision_id is None:
-        revision_id = get_langchain_env_var_metadata().get("revision_id")
 
     if kwargs:
         warn_deprecated(
