@@ -406,10 +406,6 @@ class ChatVectorDBChain(BaseConversationalRetrievalChain):
 
     @root_validator()
     def raise_deprecation(cls, values: Dict) -> Dict:
-        warnings.warn(
-            "`ChatVectorDBChain` is deprecated - "
-            "please use `from langchain.chains import ConversationalRetrievalChain`"
-        )
         return values
 
     def _get_docs(
