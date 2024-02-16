@@ -1,3 +1,7 @@
+import langchain
+import warnings
+from langchain.globals import get_verbose as get_verbose_global
+
 """Base interface that all chains should implement."""
 import inspect
 import json
@@ -40,9 +44,37 @@ logger = logging.getLogger(__name__)
 
 
 def _get_verbosity() -> bool:
-    from langchain.globals import get_verbose
+    return get_verbose_global()
 
-    return get_verbose()
+
+def get_verbose() -> bool:
+    """Get the value of the `verbose` global setting."""
+    # We're about to run some deprecated code, don't report warnings from it.
+    # The user called the correct (non-deprecated) code path and shouldn't get warnings.
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message=(
+                "Importing verbose from langchain root module is no longer supported"
+            ),
+        )
+
+        global _verbose
+        if _verbose is None:
+            # This is a workaround for an unfortunate quirk of Python's module-level `__getattr__()`
+            # implementation: https://github.com/langchain-ai/langchain/pull/11311#issuecomment-1743780004
+            #
+            # Remove it once `langchain.verbose` is no longer supported, and once all users have migrated to
+            # using `set_verbose()` here.
+            #
+            # In the meantime, the `verbose` setting is considered True if either the old or the new value
+            # are True. This accommodates users who haven't migrated to using `set_verbose()` yet. Those
+            # users are getting deprecation warnings directing them to use `set_verbose()` when they
+            # import `langhchain.verbose`.
+            _verbose = langchain.verbose
+            return _verbose
+        else:
+            return _verbose
 
 
 class Chain(RunnableSerializable[Dict[str, Any], Dict[str, Any]], ABC):
@@ -131,7 +163,7 @@ class Chain(RunnableSerializable[Dict[str, Any], Dict[str, Any]], ABC):
         callbacks = config.get("callbacks")
         tags = config.get("tags")
         metadata = config.get("metadata")
-        run_name = config.get("run_name") or self.get_name()
+        run_name = config.get("run_name")
         include_run_info = kwargs.get("include_run_info", False)
         return_only_outputs = kwargs.get("return_only_outputs", False)
 
@@ -178,7 +210,7 @@ class Chain(RunnableSerializable[Dict[str, Any], Dict[str, Any]], ABC):
         callbacks = config.get("callbacks")
         tags = config.get("tags")
         metadata = config.get("metadata")
-        run_name = config.get("run_name") or self.get_name()
+        run_name = config.get("run_name")
         include_run_info = kwargs.get("include_run_info", False)
         return_only_outputs = kwargs.get("return_only_outputs", False)
 
