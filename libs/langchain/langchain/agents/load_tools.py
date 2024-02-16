@@ -353,7 +353,9 @@ def _get_scenexplain(**kwargs: Any) -> BaseTool:
 
 
 def _get_graphql_tool(**kwargs: Any) -> BaseTool:
-    return BaseGraphQLTool(graphql_wrapper=GraphQLAPIWrapper(**kwargs))
+    graphql_endpoint = kwargs["graphql_endpoint"]
+    wrapper = GraphQLAPIWrapper(graphql_endpoint=graphql_endpoint)
+    return BaseGraphQLTool(graphql_wrapper=wrapper)
 
 
 def _get_openweathermap(**kwargs: Any) -> BaseTool:
@@ -453,7 +455,7 @@ _EXTRA_OPTIONAL_TOOLS: Dict[str, Tuple[Callable[[KwArg(Any)], BaseTool], List[st
     ),
     "stackexchange": (_get_stackexchange, []),
     "sceneXplain": (_get_scenexplain, []),
-    "graphql": (_get_graphql_tool, ["graphql_endpoint", "custom_headers"]),
+    "graphql": (_get_graphql_tool, ["graphql_endpoint"]),
     "openweathermap-api": (_get_openweathermap, ["openweathermap_api_key"]),
     "dataforseo-api-search": (
         _get_dataforseo_api_search,
@@ -475,17 +477,16 @@ _EXTRA_OPTIONAL_TOOLS: Dict[str, Tuple[Callable[[KwArg(Any)], BaseTool], List[st
 def _handle_callbacks(
     callback_manager: Optional[BaseCallbackManager], callbacks: Callbacks
 ) -> Callbacks:
-    if callback_manager is not None:
+    if callback_manager is not None and callbacks is not None:
         warnings.warn(
             "callback_manager is deprecated. Please use callbacks instead.",
             DeprecationWarning,
         )
-        if callbacks is not None:
-            raise ValueError(
-                "Cannot specify both callback_manager and callbacks arguments."
-            )
-        return callback_manager
-    return callbacks
+        raise ValueError(
+            "Cannot specify both callback_manager and callbacks arguments."
+        )
+
+    return callback_manager if callback_manager is not None else callbacks
 
 
 def load_huggingface_tool(
