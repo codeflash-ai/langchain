@@ -34,7 +34,7 @@ from langchain_core.tracers.evaluation import (
 )
 from langchain_core.tracers.langchain import LangChainTracer
 from langsmith.client import Client
-from langsmith.env import get_git_info, get_langchain_env_var_metadata
+from langsmith.env import get_git_info
 from langsmith.evaluation import EvaluationResult, RunEvaluator
 from langsmith.run_helpers import as_runnable, is_traceable_function
 from langsmith.schemas import Dataset, DataType, Example, TracerSession
@@ -168,39 +168,32 @@ def _wrap_in_chain_factory(
 ) -> MCF:
     """Forgive the user if they pass in a chain without memory instead of a chain
     factory. It's a common mistake. Raise a more helpful error message as well."""
-    if isinstance(llm_or_chain_factory, Chain):
-        chain = llm_or_chain_factory
-        chain_class = chain.__class__.__name__
-        if llm_or_chain_factory.memory is not None:
-            memory_class = chain.memory.__class__.__name__
-            raise ValueError(
-                "Cannot directly evaluate a chain with stateful memory."
-                " To evaluate this chain, pass in a chain constructor"
-                " that initializes fresh memory each time it is called."
-                "  This will safegaurd against information"
-                " leakage between dataset examples."
-                "\nFor example:\n\n"
-                "def chain_constructor():\n"
-                f"    new_memory = {memory_class}(...)\n"
-                f"    return {chain_class}"
-                "(memory=new_memory, ...)\n\n"
-                f'run_on_dataset("{dataset_name}", chain_constructor, ...)'
-            )
-        return lambda: chain
-    elif isinstance(llm_or_chain_factory, BaseLanguageModel):
-        return llm_or_chain_factory
-    elif isinstance(llm_or_chain_factory, Runnable):
-        # Memory may exist here, but it's not elegant to check all those cases.
-        lcf = llm_or_chain_factory
-        return lambda: lcf
-    elif callable(llm_or_chain_factory):
-        if is_traceable_function(llm_or_chain_factory):
-            runnable_ = as_runnable(cast(Callable, llm_or_chain_factory))
-            return lambda: runnable_
+    if callable(llm_or_chain_factory):
+        if isinstance(llm_or_chain_factory, (Runnable, Chain)):
+            if (
+                isinstance(llm_or_chain_factory, Chain)
+                and llm_or_chain_factory.memory is not None
+            ):
+                chain = llm_or_chain_factory
+                chain_class = chain.__class__.__name__
+                memory_class = chain.memory.__class__.__name__
+                raise ValueError(
+                    "Cannot directly evaluate a chain with stateful memory."
+                    " To evaluate this chain, pass in a chain constructor"
+                    " that initializes fresh memory each time it is called."
+                    "  This will safeguard against information"
+                    " leakage between dataset examples."
+                    "\nFor example:\n\n"
+                    "def chain_constructor():\n"
+                    f"    new_memory = {memory_class}(...)\n"
+                    f"    return {chain_class}"
+                    "(memory=new_memory, ...)\n\n"
+                    f'run_on_dataset("{dataset_name}", chain_constructor, ...)'
+                )
+            return lambda: llm_or_chain_factory
         try:
-            _model = llm_or_chain_factory()  # type: ignore[call-arg]
+            _model = llm_or_chain_factory()
         except TypeError:
-            # It's an arbitrary function, wrap it in a RunnableLambda
             user_func = cast(Callable, llm_or_chain_factory)
             sig = inspect.signature(user_func)
             logger.info(f"Wrapping function {sig} as RunnableLambda.")
@@ -208,18 +201,13 @@ def _wrap_in_chain_factory(
             return lambda: wrapped
         constructor = cast(Callable, llm_or_chain_factory)
         if isinstance(_model, BaseLanguageModel):
-            # It's not uncommon to do an LLM constructor instead of raw LLM,
-            # so we'll unpack it for the user.
             return _model
-        elif is_traceable_function(cast(Callable, _model)):
-            runnable_ = as_runnable(cast(Callable, _model))
-            return lambda: runnable_
         elif not isinstance(_model, Runnable):
-            # This is unlikely to happen - a constructor for a model function
             return lambda: RunnableLambda(constructor)
         else:
-            # Typical correct case
             return constructor  # noqa
+    elif isinstance(llm_or_chain_factory, BaseLanguageModel):
+        return llm_or_chain_factory
     return llm_or_chain_factory
 
 
@@ -1227,8 +1215,6 @@ async def arun_on_dataset(
     input_mapper = kwargs.pop("input_mapper", None)
     if input_mapper:
         warn_deprecated("0.0.305", message=_INPUT_MAPPER_DEP_WARNING, pending=True)
-    if revision_id is None:
-        revision_id = get_langchain_env_var_metadata().get("revision_id")
 
     if kwargs:
         warn_deprecated(
@@ -1283,8 +1269,6 @@ def run_on_dataset(
     input_mapper = kwargs.pop("input_mapper", None)
     if input_mapper:
         warn_deprecated("0.0.305", message=_INPUT_MAPPER_DEP_WARNING, pending=True)
-    if revision_id is None:
-        revision_id = get_langchain_env_var_metadata().get("revision_id")
 
     if kwargs:
         warn_deprecated(
