@@ -68,10 +68,8 @@ class LocalFileStore(ByteStore):
 
     def mget(self, keys: Sequence[str]) -> List[Optional[bytes]]:
         """Get the values associated with the given keys.
-
         Args:
             keys: A sequence of keys.
-
         Returns:
             A sequence of optional values associated with the keys.
             If a key is not found, the corresponding value will be None.
@@ -79,11 +77,11 @@ class LocalFileStore(ByteStore):
         values: List[Optional[bytes]] = []
         for key in keys:
             full_path = self._get_full_path(key)
-            if full_path.exists():
+            try:
                 value = full_path.read_bytes()
-                values.append(value)
-            else:
-                values.append(None)
+            except FileNotFoundError:
+                value = None
+            values.append(value)
         return values
 
     def mset(self, key_value_pairs: Sequence[Tuple[str, bytes]]) -> None:
@@ -128,3 +126,22 @@ class LocalFileStore(ByteStore):
             if file.is_file():
                 relative_path = file.relative_to(self.root_path)
                 yield str(relative_path)
+
+
+def _get_full_path(self, key: str) -> Path:
+    """Get the full path for a given key relative to the root path.
+    Args:
+        key (str): The key relative to the root path.
+    Returns:
+        Path: The full path for the given key.
+    """
+    if not PATH_REGEX.match(key):
+        raise InvalidKeyException(f"Invalid characters in key: {key}")
+    full_path = os.path.abspath(self.root_path / key)
+    common_path = os.path.commonpath([str(self.root_path), full_path])
+    if common_path != str(self.root_path):
+        raise InvalidKeyException(
+            f"Invalid key: {key}. Key should be relative to the full path."
+            f"{self.root_path} vs. {common_path} and full path of {full_path}"
+        )
+    return Path(full_path)
