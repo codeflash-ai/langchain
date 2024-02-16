@@ -1,4 +1,8 @@
 # ruff: noqa: E402
+import warnings
+import sys
+from langchain.utils.interactive_env import is_interactive_env
+
 """Main entrypoint into package."""
 import warnings
 from importlib import metadata
@@ -16,8 +20,6 @@ del metadata  # optional, avoids polluting the results of dir(__package__)
 
 def _warn_on_import(name: str, replacement: Optional[str] = None) -> None:
     """Warn on import of deprecated module."""
-    from langchain.utils.interactive_env import is_interactive_env
-
     if is_interactive_env():
         # No warnings for interactive environments.
         # This is done to avoid polluting the output of interactive environments
@@ -384,6 +386,11 @@ def __getattr__(name: str) -> Any:
         return _llm_cache
     else:
         raise AttributeError(f"Could not find: {name}")
+
+
+def is_interactive_env() -> bool:
+    """Determine if running within IPython or Jupyter."""
+    return hasattr(sys, "ps2")
 
 
 __all__ = [
