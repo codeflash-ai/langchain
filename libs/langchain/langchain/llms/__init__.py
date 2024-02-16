@@ -1,3 +1,5 @@
+from langchain_community.llms.anthropic import Anthropic
+
 """
 **LLM** classes provide
 access to the large language model (**LLM**) APIs and services.
@@ -45,8 +47,6 @@ def _import_amazon_api_gateway() -> Any:
 
 
 def _import_anthropic() -> Any:
-    from langchain_community.llms.anthropic import Anthropic
-
     return Anthropic
 
 
