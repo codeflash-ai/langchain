@@ -52,16 +52,6 @@ _SUPPORTED_CRITERIA = {
 def resolve_pairwise_criteria(
     criteria: Optional[Union[CRITERIA_TYPE, str, List[CRITERIA_TYPE]]],
 ) -> dict:
-    """Resolve the criteria for the pairwise evaluator.
-
-    Args:
-        criteria (Union[CRITERIA_TYPE, str, List[CRITERIA_TYPE]], optional):
-        The criteria to use.
-
-    Returns:
-        dict: The resolved criteria.
-
-    """
     if criteria is None:
         _default_criteria = [
             Criteria.HELPFULNESS,
@@ -70,30 +60,32 @@ def resolve_pairwise_criteria(
             Criteria.DEPTH,
         ]
         return {k.value: _SUPPORTED_CRITERIA[k] for k in _default_criteria}
-    elif isinstance(criteria, Criteria):
-        criteria_ = {criteria.value: _SUPPORTED_CRITERIA[criteria]}
-    elif isinstance(criteria, str):
+
+    criteria_type = type(criteria)
+
+    if criteria_type == Criteria:
+        return {criteria.value: _SUPPORTED_CRITERIA[criteria]}
+
+    if criteria_type == str:
         if criteria in _SUPPORTED_CRITERIA:
-            criteria_ = {criteria: _SUPPORTED_CRITERIA[Criteria(criteria)]}
-        else:
-            criteria_ = {criteria: ""}
-    elif isinstance(criteria, ConstitutionalPrinciple):
-        criteria_ = {criteria.name: criteria.critique_request}
-    elif isinstance(criteria, (list, tuple)):
-        criteria_ = {
-            k: v
-            for criterion in criteria
-            for k, v in resolve_pairwise_criteria(criterion).items()
-        }
-    else:
-        if not criteria:
-            raise ValueError(
-                "Criteria cannot be empty. "
-                "Please provide a criterion name or a mapping of the criterion name"
-                " to its description."
-            )
-        criteria_ = dict(criteria)
-    return criteria_
+            return {criteria: _SUPPORTED_CRITERIA[Criteria(criteria)]}
+        return {criteria: ""}
+
+    if criteria_type == ConstitutionalPrinciple:
+        return {criteria.name: criteria.critique_request}
+
+    if criteria_type in (list, tuple):
+        criteria_dict = {}
+        for criterion in criteria:
+            criteria_dict.update(resolve_pairwise_criteria(criterion))
+        return criteria_dict
+
+    if not criteria:
+        raise ValueError(
+            "Criteria cannot be empty. Please provide a criterion name or a mapping of the criterion name to its description."
+        )
+
+    return dict(criteria)
 
 
 class PairwiseStringResultOutputParser(BaseOutputParser[dict]):
