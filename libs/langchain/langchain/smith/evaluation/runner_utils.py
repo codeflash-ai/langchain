@@ -34,7 +34,7 @@ from langchain_core.tracers.evaluation import (
 )
 from langchain_core.tracers.langchain import LangChainTracer
 from langsmith.client import Client
-from langsmith.env import get_git_info, get_langchain_env_var_metadata
+from langsmith.env import get_git_info
 from langsmith.evaluation import EvaluationResult, RunEvaluator
 from langsmith.run_helpers import as_runnable, is_traceable_function
 from langsmith.schemas import Dataset, DataType, Example, TracerSession
@@ -904,32 +904,20 @@ def _run_llm_or_chain(
     llm_or_chain_factory: MCF,
     input_mapper: Optional[Callable[[Dict], Any]] = None,
 ) -> Union[dict, str, LLMResult, ChatResult]:
-    """
-    Run the Chain or language model synchronously.
-
-    Args:
-        example: The example to run.
-        llm_or_chain_factory: The Chain or language model constructor to run.
-        tags: Optional tags to add to the run.
-        callbacks: Optional callbacks to use during the run.
-
-    Returns:
-        Union[List[dict], List[str], List[LLMResult], List[ChatResult]]:
-          The outputs of the model or chain.
-    """
     chain_or_llm = (
         "LLM" if isinstance(llm_or_chain_factory, BaseLanguageModel) else "Chain"
     )
     result = None
+
     try:
         if isinstance(llm_or_chain_factory, BaseLanguageModel):
-            output: Any = _run_llm(
+            output = _run_llm(
                 llm_or_chain_factory,
                 example.inputs,
                 config["callbacks"],
                 tags=config["tags"],
                 input_mapper=input_mapper,
-                metadata=config.get("metadata"),
+                metadata=config.get("metadata", {}),
             )
         else:
             chain = llm_or_chain_factory()
@@ -939,17 +927,16 @@ def _run_llm_or_chain(
                 config["callbacks"],
                 tags=config["tags"],
                 input_mapper=input_mapper,
-                metadata=config.get("metadata"),
+                metadata=config.get("metadata", {}),
             )
         result = output
     except Exception as e:
-        error_type = type(e).__name__
         logger.warning(
-            f"{chain_or_llm} failed for example {example.id} "
-            f"with inputs {example.inputs}"
-            f"\nError Type: {error_type}, Message: {e}"
+            f"{chain_or_llm} failed for example {example.id} with inputs {example.inputs}"
+            f"\nError Type: {type(e).__name__}, Message: {e}"
         )
-        result = EvalError(Error=e)
+        result = EvalError(error=e)
+
     return result
 
 
@@ -1227,8 +1214,6 @@ async def arun_on_dataset(
     input_mapper = kwargs.pop("input_mapper", None)
     if input_mapper:
         warn_deprecated("0.0.305", message=_INPUT_MAPPER_DEP_WARNING, pending=True)
-    if revision_id is None:
-        revision_id = get_langchain_env_var_metadata().get("revision_id")
 
     if kwargs:
         warn_deprecated(
@@ -1283,8 +1268,6 @@ def run_on_dataset(
     input_mapper = kwargs.pop("input_mapper", None)
     if input_mapper:
         warn_deprecated("0.0.305", message=_INPUT_MAPPER_DEP_WARNING, pending=True)
-    if revision_id is None:
-        revision_id = get_langchain_env_var_metadata().get("revision_id")
 
     if kwargs:
         warn_deprecated(
@@ -1332,6 +1315,67 @@ def run_on_dataset(
             )
 
     return container.finish(batch_results, verbose=verbose)
+
+
+def _run_llm(
+    llm: BaseLanguageModel,
+    inputs: Dict[str, Any],
+    callbacks: Callbacks,
+    *,
+    tags: Optional[List[str]] = None,
+    input_mapper: Optional[Callable[[Dict], Any]] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> Union[str, BaseMessage]:
+    tags = tags if tags is not None else []
+    metadata = metadata if metadata is not None else {}
+    llm_output = None
+
+    # Create RunnableConfig instance only once and use it in all relevant places
+    run_cfg = RunnableConfig(callbacks=callbacks, tags=tags, metadata=metadata)
+
+    if input_mapper:
+        prompt_or_messages = input_mapper(inputs)
+        if isinstance(prompt_or_messages, (str, list)) and all(
+            isinstance(msg, BaseMessage) for msg in prompt_or_messages
+        ):
+            llm_output = llm.invoke(prompt_or_messages, config=run_cfg)
+        else:
+            raise InputFormatError(
+                f"Input mapper returned invalid format: {prompt_or_messages}"
+                "Expected a single string or list of chat messages."
+            )
+    else:
+        try:
+            llm_prompts = _get_prompt(inputs)
+            llm_output = llm.invoke(llm_prompts, config=run_cfg)
+        except InputFormatError:
+            llm_messages = _get_messages(inputs)
+            llm_output = llm.invoke(llm_messages, config=run_cfg)
+
+    return llm_output
+
+
+def _run_chain(
+    chain: Union[Chain, Runnable],
+    inputs: Dict[str, Any],
+    callbacks: Callbacks,
+    *,
+    tags: Optional[List[str]] = None,
+    input_mapper: Optional[Callable[[Dict], Any]] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> Union[Dict, str]:
+    inputs_ = inputs if input_mapper is None else input_mapper(inputs)
+    tags = tags if tags is not None else []
+    metadata = metadata if metadata is not None else {}
+    runnable_config = RunnableConfig(tags=tags, callbacks=callbacks, metadata=metadata)
+
+    output = chain.invoke(
+        inputs_.values()[0]
+        if isinstance(chain, Chain) and len(inputs_) == 1 and chain.input_keys
+        else inputs_,
+        config=runnable_config,
+    )
+    return output
 
 
 _RUN_ON_DATASET_DOCSTRING = """
