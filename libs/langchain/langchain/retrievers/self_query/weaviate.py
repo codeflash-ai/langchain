@@ -69,9 +69,7 @@ class WeaviateTranslator(Visitor):
         }
         return filter
 
-    def visit_structured_query(
-        self, structured_query: StructuredQuery
-    ) -> Tuple[str, dict]:
+    def visit_structured_query(self, structured_query):
         if structured_query.filter is None:
             kwargs = {}
         else:
