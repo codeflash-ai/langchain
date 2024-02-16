@@ -63,8 +63,7 @@ class AstraDBTranslator(Visitor):
     def visit_structured_query(
         self, structured_query: StructuredQuery
     ) -> Tuple[str, dict]:
-        if structured_query.filter is None:
-            kwargs = {}
-        else:
-            kwargs = {"filter": structured_query.filter.accept(self)}
-        return structured_query.query, kwargs
+        filter_accept = {}
+        if structured_query.filter is not None:
+            filter_accept = {"filter": structured_query.filter.accept(self)}
+        return structured_query.query, filter_accept
