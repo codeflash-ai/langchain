@@ -76,13 +76,14 @@ class ConversationSummaryMemory(BaseChatMemory, SummarizerMixin):
     @root_validator()
     def validate_prompt_input_variables(cls, values: Dict) -> Dict:
         """Validate that prompt input variables are consistent."""
-        prompt_variables = values["prompt"].input_variables
+        prompt_variables = values.get("prompt").input_variables
         expected_keys = {"summary", "new_lines"}
         if expected_keys != set(prompt_variables):
-            raise ValueError(
-                "Got unexpected prompt input variables. The prompt expects "
-                f"{prompt_variables}, but it should have {expected_keys}."
-            )
+            error_msg = ["Got unexpected prompt input variables. The prompt expects"]
+            error_msg.append(str(prompt_variables))
+            error_msg.append(", but it should have")
+            error_msg.append(str(expected_keys))
+            raise ValueError("".join(error_msg))
         return values
 
     def save_context(self, inputs: Dict[str, Any], outputs: Dict[str, str]) -> None:
