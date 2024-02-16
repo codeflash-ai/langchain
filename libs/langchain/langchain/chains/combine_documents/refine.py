@@ -107,9 +107,10 @@ class RefineDocumentsChain(BaseCombineDocumentsChain):
     @root_validator(pre=True)
     def get_return_intermediate_steps(cls, values: Dict) -> Dict:
         """For backwards compatibility."""
-        if "return_refine_steps" in values:
-            values["return_intermediate_steps"] = values["return_refine_steps"]
-            del values["return_refine_steps"]
+        try:
+            values["return_intermediate_steps"] = values.pop("return_refine_steps")
+        except KeyError:
+            pass
         return values
 
     @root_validator(pre=True)
