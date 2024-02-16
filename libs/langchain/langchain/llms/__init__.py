@@ -1,3 +1,5 @@
+from langchain_community.llms.amazon_api_gateway import AmazonAPIGateway
+
 """
 **LLM** classes provide
 access to the large language model (**LLM**) APIs and services.
@@ -39,8 +41,6 @@ def _import_aleph_alpha() -> Any:
 
 
 def _import_amazon_api_gateway() -> Any:
-    from langchain_community.llms.amazon_api_gateway import AmazonAPIGateway
-
     return AmazonAPIGateway
 
 
