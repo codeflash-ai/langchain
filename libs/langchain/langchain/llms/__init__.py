@@ -1,3 +1,5 @@
+from langchain_community.llms.baidu_qianfan_endpoint import QianfanLLMEndpoint
+
 """
 **LLM** classes provide
 access to the large language model (**LLM**) APIs and services.
@@ -75,8 +77,6 @@ def _import_azureml_endpoint() -> Any:
 
 
 def _import_baidu_qianfan_endpoint() -> Any:
-    from langchain_community.llms.baidu_qianfan_endpoint import QianfanLLMEndpoint
-
     return QianfanLLMEndpoint
 
 
