@@ -1,3 +1,5 @@
+from langchain_community.llms.aviary import Aviary
+
 """
 **LLM** classes provide
 access to the large language model (**LLM**) APIs and services.
@@ -63,8 +65,6 @@ def _import_arcee() -> Any:
 
 
 def _import_aviary() -> Any:
-    from langchain_community.llms.aviary import Aviary
-
     return Aviary
 
 
