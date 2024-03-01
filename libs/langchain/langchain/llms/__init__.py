@@ -1,3 +1,5 @@
+from langchain_community.llms.arcee import Arcee
+
 """
 **LLM** classes provide
 access to the large language model (**LLM**) APIs and services.
@@ -57,8 +59,6 @@ def _import_anyscale() -> Any:
 
 
 def _import_arcee() -> Any:
-    from langchain_community.llms.arcee import Arcee
-
     return Arcee
 
 
