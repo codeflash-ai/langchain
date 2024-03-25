@@ -1,4 +1,5 @@
 """Chain for question-answering against a vector database."""
+
 from __future__ import annotations
 
 import inspect
@@ -262,10 +263,11 @@ class VectorDBQA(BaseRetrievalQA):
     @root_validator()
     def validate_search_type(cls, values: Dict) -> Dict:
         """Validate search type."""
-        if "search_type" in values:
-            search_type = values["search_type"]
-            if search_type not in ("similarity", "mmr"):
-                raise ValueError(f"search_type of {search_type} not allowed.")
+        if "search_type" in values and values["search_type"] not in (
+            "similarity",
+            "mmr",
+        ):
+            raise ValueError(f"search_type of {values['search_type']} not allowed.")
         return values
 
     def _get_docs(
