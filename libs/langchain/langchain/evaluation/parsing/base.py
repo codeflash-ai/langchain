@@ -48,31 +48,16 @@ class JsonValidityEvaluator(StringEvaluator):
         return "json_validity"
 
     def _evaluate_strings(
-        self,
-        prediction: str,
-        input: Optional[str] = None,
-        reference: Optional[str] = None,
-        **kwargs: Any,
+        self, prediction: str, reference: Optional[str] = None, **kwargs: Any
     ) -> dict:
-        """Evaluate the prediction string.
-
-        Args:
-            prediction (str): The prediction string to evaluate.
-            input (str, optional): Not used in this evaluator. Defaults to None.
-            reference (str, optional): Not used in this evaluator. Defaults to None.
-
-        Returns:
-            dict: A dictionary containing the evaluation score. The score is 1 if
-            the prediction is valid JSON, and 0 otherwise.
-                If the prediction is not valid JSON, the dictionary also contains
-                a "reasoning" field with the error message.
-
-        """
-        try:
-            parse_json_markdown(prediction, parser=json.loads)
-            return {"score": 1}
-        except Exception as e:
-            return {"score": 0, "reasoning": str(e)}
+        parsed = self._parse_json(prediction)
+        label = self._parse_json(cast(str, reference))
+        if isinstance(label, list) and not isinstance(parsed, list):
+            return {"score": 0}
+        elif isinstance(label, list):
+            parsed = sorted(parsed, key=str)
+            label = sorted(label, key=str)
+        return {"score": self.operator(parsed, label)}
 
 
 class JsonEqualityEvaluator(StringEvaluator):
@@ -131,27 +116,13 @@ class JsonEqualityEvaluator(StringEvaluator):
         return string
 
     def _evaluate_strings(
-        self,
-        prediction: str,
-        input: Optional[str] = None,
-        reference: Optional[str] = None,
-        **kwargs: Any,
+        self, prediction: str, reference: Optional[str] = None, **kwargs: Any
     ) -> dict:
-        """Evaluate the prediction string.
-
-        Args:
-            prediction (str): The prediction string to evaluate.
-            input (str, optional): Not used in this evaluator.
-            reference (str): The reference string to compare against.
-
-        Returns:
-            dict: A dictionary containing the evaluation score.
-        """
         parsed = self._parse_json(prediction)
         label = self._parse_json(cast(str, reference))
-        if isinstance(label, list):
-            if not isinstance(parsed, list):
-                return {"score": 0}
-            parsed = sorted(parsed, key=lambda x: str(x))
-            label = sorted(label, key=lambda x: str(x))
+        if isinstance(label, list) and not isinstance(parsed, list):
+            return {"score": 0}
+        elif isinstance(label, list):
+            parsed = sorted(parsed, key=str)
+            label = sorted(label, key=str)
         return {"score": self.operator(parsed, label)}
