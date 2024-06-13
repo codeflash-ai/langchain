@@ -1,3 +1,5 @@
+from langchain_community.llms.anyscale import Anyscale as anyscale_module
+
 """
 **LLM** classes provide
 access to the large language model (**LLM**) APIs and services.
@@ -51,9 +53,7 @@ def _import_anthropic() -> Any:
 
 
 def _import_anyscale() -> Any:
-    from langchain_community.llms.anyscale import Anyscale
-
-    return Anyscale
+    return anyscale_module
 
 
 def _import_arcee() -> Any:
